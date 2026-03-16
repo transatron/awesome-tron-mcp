@@ -1,6 +1,6 @@
 # TRON MCP Server
 
-An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for interacting with the TRON blockchain. Exposes ~35 tools over stdio transport covering balance queries, TRX transfers, smart contract calls, energy estimation, market data, java-tron repository browsing, and more.
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for interacting with the TRON blockchain. Exposes ~38 read-only tools over stdio transport covering balance queries, TRX transfers, smart contract interaction, energy estimation, contract analytics, account analytics, market data, and more.
 
 ## Prerequisites
 
@@ -29,10 +29,6 @@ Edit `.env` with your API keys and desired settings. See the [environment parame
 
 | Variable | Description | Default |
 |---|---|---|
-| `PRIVATE_KEY` | Wallet private key (needed for sending transactions) | *(optional)* |
-| `ENABLE_CACHE` | Enable response caching | `true` |
-| `CACHE_TTL` | Cache time-to-live in seconds | `300` |
-| `DEBUG` | Enable debug logging | `false` |
 
 ## Running the Server
 
@@ -65,7 +61,6 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "command": "node",
       "args": ["<full-path-to-repo>/dist/index.js"],
       "env": {
-        "NETWORK": "mainnet",
         "FULL_NODE_URL": "https://api.trongrid.io",
         "TRONGRID_API_URL": "https://api.trongrid.io",
         "TRONGRID_API_KEY": "your-trongrid-api-key",
@@ -83,7 +78,6 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 
 | Parameter | Description | Default |
 |---|---|---|
-| `NETWORK` | Network to use: `mainnet`, `shasta`, or `nile` | `mainnet` |
 | `FULL_NODE_URL` | TRON full node RPC endpoint | `https://api.trongrid.io` |
 | `TRONGRID_API_URL` | TronGrid API base URL | `https://api.trongrid.io` |
 | `TRONGRID_API_KEY` | Your TronGrid API key | *(required)* |
@@ -103,7 +97,6 @@ Add to your Claude Code MCP settings (`.claude/settings.json` or project-level):
       "command": "node",
       "args": ["<full-path-to-repo>/dist/index.js"],
       "env": {
-        "NETWORK": "mainnet",
         "FULL_NODE_URL": "https://api.trongrid.io",
         "TRONGRID_API_URL": "https://api.trongrid.io",
         "TRONGRID_API_KEY": "your-trongrid-api-key",
@@ -123,27 +116,38 @@ Any MCP-compatible client that supports stdio transport can connect. Point it at
 
 ## Available Tools
 
-### Account & Wallet
+### Account & Wallet (10)
 - **get_balance** — Get TRX balance for an address
 - **get_account_resources** — Get bandwidth, energy, and staking info
-- **send_trx** — Send TRX to an address (requires `PRIVATE_KEY`)
+- **get_account_overview** — Comprehensive account overview (balance, resources, activity)
+- **get_account_tokens** — Tokens held by an account (TRC10/TRC20/TRC721)
+- **get_account_votes** — Voting info for a voter or SR candidate
+- **get_account_approvals** — Token approval list for an account
+- **get_account_approval_changes** — Approval change history for a contract
+- **get_account_analysis** — Analytical data for an account
+- **get_account_defi** — DeFi project participation
+- **get_account_token_overview** — Token asset overview
 
-### Transactions & Blocks
+### Transactions & Blocks (5)
 - **get_transaction** — Look up a transaction by hash
 - **get_transactions_by_address** — List transactions for an address
 - **get_trc20_transfers_by_address** — List TRC20 token transfers
 - **get_block** — Get block details by number or hash
 - **get_current_block_number** — Get the latest block number
 
-### Smart Contracts
+### Smart Contracts (10)
 - **contract_call** — Call a smart contract method
-- **estimate_energy** — Estimate energy for a contract call
-- **estimate_contract_energy** — Detailed energy estimation
-- **batch_estimate_energy** — Estimate energy for multiple calls
-- **analyze_contract_gas** — Analyze gas usage for a contract
-- **clear_energy_cache** — Clear the energy estimation cache
+- **estimate_energy** — Estimate energy for a contract call (supports callerAddress, callValue, feeLimit)
+- **estimate_contract_deploy** — Estimate energy/bandwidth for deploying a smart contract
+- **get_contract_info** — Combined contract info from TronGrid + TronScan (ABI, energy economics, metadata)
+- **get_contract_energy_stats** — Energy consumption statistics for a contract
+- **get_contract_call_stats** — Top call statistics for a contract
+- **get_contract_callers** — Callers of a smart contract
+- **get_contract_daily_activity** — Daily trigger/call activity statistics
+- **get_contract_analysis** — Analytical data for a contract
+- **get_contract_events** — Recent smart contract trigger events
 
-### Market & Network Data
+### Market & Network Data (8)
 - **get_trx_price** — Current TRX price
 - **get_trx_market_data** — Detailed market data (via CoinGecko)
 - **get_network_statistics** — TRON network stats
@@ -153,23 +157,13 @@ Any MCP-compatible client that supports stdio transport can connect. Point it at
 - **get_chain_parameters** — On-chain governance parameters
 - **get_energy_prices** — Current energy prices
 
-### java-tron Repository
-- **get_java_tron_readme** — Fetch java-tron README
-- **get_java_tron_file** — Read a file from the java-tron repo
-- **search_java_tron** — Search code in java-tron
-- **get_java_tron_structure** — Browse java-tron directory structure
-- **get_java_tron_protos** — Get protobuf definitions
-- **get_java_tron_issues** — Browse java-tron GitHub issues
-- **get_java_tron_releases** — List java-tron releases
-
-### Documentation
+### Documentation (2)
 - **search_tron_docs** — Search TRON documentation
 - **get_tron_reference** — Get reference info on a TRON topic
 
-### Raw API Access
+### Raw API Access (3)
 - **trongrid_api_call** — Make a raw TronGrid API request
 - **tronscan_api_call** — Make a raw TronScan API request
-- **get_trongrid_block** — Get block data via TronGrid
 - **get_trongrid_account** — Get account data via TronGrid
 
 ## Development
@@ -182,9 +176,16 @@ npm run typecheck
 npm run build
 ```
 
+## Related MCP Servers
+
+- **[JustLend MCP](https://github.com/justlend/mcp-server-justlend)** — MCP server for interacting with the JustLend DAO lending protocol on TRON.
+- **[TronGrid MCP](https://developers.tron.network/reference/mcp-api)** — Official full TronGrid API exposed as MCP. Covers the entire TronGrid API surface. Note: this server registers a large number of tools, which will consume a significant portion of the context window (all tool schemas are injected into every request). Recommended only if the tools provided here are not sufficient for your use case.
+
 ## Architecture
 
-The server uses a fallback strategy: requests are tried via TronWeb first, then TronGrid, then TronScan — returning the first successful result. Rate limiting is applied independently to TronGrid and TronScan APIs.
+The server uses a fallback strategy: requests are tried via TronWeb first, then TronGrid, then TronScan — returning the first successful result. The primary API source can be swapped via `PRIMARY_API` env variable (`TRONGRID` or `TRONSCAN`, default `TRONGRID`).
+
+**Rate limiting:** The server proactively enforces rate limits for both TronGrid and TronScan APIs. All outgoing calls are tracked in a sliding 1-second window and automatically delayed when the configured limit (`TRONGRID_API_RATE_LIMIT` / `TRONSCAN_API_RATE_LIMIT`, default 3 req/s each) would be exceeded. If a 429 response is received, the server parses the cooldown duration from the response and blocks further requests to that API until the cooldown expires. This prevents cascading failures and avoids API bans during heavy tool usage.
 
 ## License
 

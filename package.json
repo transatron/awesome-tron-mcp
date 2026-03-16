@@ -9,7 +9,7 @@
     "dev": "tsx --watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx/esm --test 'test/**/*.test.ts'"
+    "test": "node --import tsx/esm --test --test-concurrency=1 'test/**/*.test.ts'"
   },
   "keywords": [
     "mcp",

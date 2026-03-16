@@ -74,7 +74,7 @@ class TronMcpServer {
 
       this.trongridRateLimiter = new RateLimiter(
         'TronGrid',
-        parseInt(process.env.TRONGRID_API_RATE_LIMIT || '') || 3
+        parseInt(process.env.TRONGRID_API_RATE_LIMIT || '') || 5
       );
       this.tronscanRateLimiter = new RateLimiter(
         'TronScan',
@@ -127,11 +127,8 @@ class TronMcpServer {
       this.tronWeb.setHeader({ 'TRON-PRO-API-KEY': process.env.TRONGRID_API_KEY });
     }
 
-    if (process.env.PRIVATE_KEY) {
-      this.tronWeb.setPrivateKey(process.env.PRIVATE_KEY);
-    } else {
-      this.tronWeb.setAddress('TSLbRevWFn3hktZmfDrzRbDLfEA6RQjNwK');
-    }
+    // Set a default address for read-only operations (no private key needed)
+    this.tronWeb.setAddress('TSLbRevWFn3hktZmfDrzRbDLfEA6RQjNwK');
 
     try {
       setTimeout(() => {
@@ -172,19 +169,6 @@ class TronMcpServer {
               address: { type: 'string', description: 'TRON address' },
             },
             required: ['address'],
-          },
-        },
-        {
-          name: 'send_trx',
-          description: 'Send TRX to an address',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              to: { type: 'string', description: 'Recipient TRON address' },
-              amount: { type: 'number', description: 'Amount in TRX' },
-              privateKey: { type: 'string', description: 'Private key of sender (optional if set in env)' },
-            },
-            required: ['to', 'amount'],
           },
         },
         {
@@ -270,18 +254,11 @@ class TronMcpServer {
               contractAddress: { type: 'string', description: 'Smart contract address' },
               functionName: { type: 'string', description: 'Function name' },
               parameters: { type: 'array', description: 'Function parameters', items: {} },
+              callerAddress: { type: 'string', description: 'Caller address for estimation (optional, falls back to default address)' },
+              callValue: { type: 'number', description: 'TRX sent with call in SUN, for payable functions (default: 0)' },
+              feeLimit: { type: 'number', description: 'Fee limit in SUN (default: 100000000)' },
             },
             required: ['contractAddress', 'functionName'],
-          },
-        },
-        {
-          name: 'get_java_tron_releases',
-          description: 'Get latest java-tron releases from GitHub',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              limit: { type: 'number', description: 'Number of releases to fetch (default: 10)' },
-            },
           },
         },
         {
@@ -353,112 +330,6 @@ class TronMcpServer {
           inputSchema: { type: 'object' as const, properties: {} },
         },
         {
-          name: 'get_java_tron_readme',
-          description: 'Get java-tron README documentation',
-          inputSchema: { type: 'object' as const, properties: {} },
-        },
-        {
-          name: 'get_java_tron_file',
-          description: 'Get content of a specific file from java-tron repository',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              path: { type: 'string', description: 'File path in the repository' },
-            },
-            required: ['path'],
-          },
-        },
-        {
-          name: 'search_java_tron',
-          description: 'Search in java-tron repository',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              query: { type: 'string', description: 'Search query' },
-              type: { type: 'string', description: 'Search type: code, issues, commits (default: code)' },
-              limit: { type: 'number', description: 'Number of results (default: 20)' },
-            },
-            required: ['query'],
-          },
-        },
-        {
-          name: 'get_java_tron_structure',
-          description: 'Get java-tron repository structure and modules',
-          inputSchema: { type: 'object' as const, properties: {} },
-        },
-        {
-          name: 'get_java_tron_protos',
-          description: 'Get Protocol Buffer definitions from java-tron',
-          inputSchema: { type: 'object' as const, properties: {} },
-        },
-        {
-          name: 'get_java_tron_issues',
-          description: 'Get recent issues from java-tron repository',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              state: { type: 'string', description: 'Issue state: open, closed, all (default: open)' },
-              limit: { type: 'number', description: 'Number of issues (default: 20)' },
-            },
-          },
-        },
-        {
-          name: 'estimate_contract_energy',
-          description: 'Estimate energy consumption for smart contract interaction using TRON node',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              contractAddress: { type: 'string', description: 'Smart contract address' },
-              functionName: { type: 'string', description: 'Function name to call' },
-              parameters: { type: 'array', description: 'Function parameters', items: {} },
-              callerAddress: { type: 'string', description: 'Address of the caller (optional)' },
-              feeLimit: { type: 'number', description: 'Fee limit in SUN (optional, default: 100000000)' },
-            },
-            required: ['contractAddress', 'functionName'],
-          },
-        },
-        {
-          name: 'batch_estimate_energy',
-          description: 'Batch estimate energy for multiple contract calls',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              contractCalls: {
-                type: 'array',
-                description: 'Array of contract call objects',
-                items: {
-                  type: 'object',
-                  properties: {
-                    contractAddress: { type: 'string' },
-                    functionName: { type: 'string' },
-                    parameters: { type: 'array' },
-                    callerAddress: { type: 'string' },
-                    feeLimit: { type: 'number' },
-                  },
-                  required: ['contractAddress', 'functionName'],
-                },
-              },
-            },
-            required: ['contractCalls'],
-          },
-        },
-        {
-          name: 'analyze_contract_gas',
-          description: 'Analyze gas costs for all functions in a smart contract',
-          inputSchema: {
-            type: 'object' as const,
-            properties: {
-              contractAddress: { type: 'string', description: 'Smart contract address' },
-            },
-            required: ['contractAddress'],
-          },
-        },
-        {
-          name: 'clear_energy_cache',
-          description: 'Clear energy estimation cache',
-          inputSchema: { type: 'object' as const, properties: {} },
-        },
-        {
           name: 'trongrid_api_call',
           description: 'Direct call to TronGrid API endpoint',
           inputSchema: {
@@ -484,19 +355,210 @@ class TronMcpServer {
           },
         },
         {
-          name: 'get_trongrid_block',
-          description: 'Get block information directly from TronGrid API',
+          name: 'get_trongrid_account',
+          description: 'Get account information directly from TronGrid API',
           inputSchema: {
             type: 'object' as const,
             properties: {
-              blockNumber: { type: 'number', description: 'Block number (optional, returns latest if not provided)' },
-              onlyNumber: { type: 'boolean', description: 'Return only block number (compact output)' },
+              address: { type: 'string', description: 'TRON address' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'estimate_contract_deploy',
+          description: 'Estimate energy and bandwidth cost for deploying a smart contract',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              bytecodeHex: { type: 'string', description: 'Compiled contract bytecode (hex string)' },
+              ownerAddress: { type: 'string', description: 'Deployer address (optional, falls back to default)' },
+              callValue: { type: 'number', description: 'TRX sent with deployment in SUN (default: 0)' },
+            },
+            required: ['bytecodeHex'],
+          },
+        },
+        {
+          name: 'get_contract_info',
+          description: 'Get combined contract info from TronGrid (ABI, bytecode, energy economics) and TronScan (verification, metadata, tags)',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              contractAddress: { type: 'string', description: 'Smart contract address' },
+            },
+            required: ['contractAddress'],
+          },
+        },
+        {
+          name: 'get_contract_energy_stats',
+          description: 'Get energy consumption statistics for a contract',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'Smart contract address' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_contract_call_stats',
+          description: 'Get top call statistics for a contract',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              contract_address: { type: 'string', description: 'Smart contract address' },
+            },
+            required: ['contract_address'],
+          },
+        },
+        {
+          name: 'get_contract_callers',
+          description: 'Get callers of a smart contract with optional time filtering',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'Smart contract address' },
+              day: { type: 'number', description: 'Number of days to look back (optional)' },
+              start: { type: 'number', description: 'Pagination offset (optional)' },
+              limit: { type: 'number', description: 'Number of results (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_contract_daily_activity',
+          description: 'Get daily trigger/call activity statistics for a contract',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'Smart contract address' },
+              start_timestamp: { type: 'number', description: 'Start timestamp in ms (optional)' },
+              end_timestamp: { type: 'number', description: 'End timestamp in ms (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_contract_analysis',
+          description: 'Get analytical data for a contract (callers, transactions, etc.)',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'Smart contract address' },
+              type: { type: 'string', description: 'Analysis type (optional)' },
+              start_timestamp: { type: 'number', description: 'Start timestamp in ms (optional)' },
+              end_timestamp: { type: 'number', description: 'End timestamp in ms (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_contract_events',
+          description: 'Get recent smart contract trigger events',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              contractAddress: { type: 'string', description: 'Smart contract address' },
+              limit: { type: 'number', description: 'Number of events to return (default: 20)' },
+            },
+            required: ['contractAddress'],
+          },
+        },
+        {
+          name: 'get_account_overview',
+          description: 'Get comprehensive account overview including balance, resources, and activity',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'TRON address' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_account_tokens',
+          description: 'Get tokens held by an account with optional type filtering',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'TRON address' },
+              start: { type: 'number', description: 'Pagination offset (optional)' },
+              limit: { type: 'number', description: 'Number of results (optional)' },
+              type: { type: 'string', description: 'Token type filter: TRC10, TRC20, or TRC721 (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_account_votes',
+          description: 'Get voting information for a voter or SR candidate',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              voter: { type: 'string', description: 'Voter TRON address (optional)' },
+              candidate: { type: 'string', description: 'SR candidate TRON address (optional)' },
+              start: { type: 'number', description: 'Pagination offset (optional)' },
+              limit: { type: 'number', description: 'Number of results (optional)' },
             },
           },
         },
         {
-          name: 'get_trongrid_account',
-          description: 'Get account information directly from TronGrid API',
+          name: 'get_account_approvals',
+          description: 'Get token approval list for an account',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'TRON address' },
+              type: { type: 'string', description: 'Approval type filter (optional)' },
+              start: { type: 'number', description: 'Pagination offset (optional)' },
+              limit: { type: 'number', description: 'Number of results (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_account_approval_changes',
+          description: 'Get approval change history for a contract',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              contract_address: { type: 'string', description: 'Contract address' },
+              from_address: { type: 'string', description: 'Approver address (optional)' },
+              to_address: { type: 'string', description: 'Spender address (optional)' },
+              start: { type: 'number', description: 'Pagination offset (optional)' },
+              limit: { type: 'number', description: 'Number of results (optional)' },
+            },
+            required: ['contract_address'],
+          },
+        },
+        {
+          name: 'get_account_analysis',
+          description: 'Get analytical data for an account (transactions, transfers, etc.)',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'TRON address' },
+              type: { type: 'string', description: 'Analysis type (optional)' },
+              start_timestamp: { type: 'number', description: 'Start timestamp in ms (optional)' },
+              end_timestamp: { type: 'number', description: 'End timestamp in ms (optional)' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_account_defi',
+          description: 'Get DeFi project participation for an account',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              address: { type: 'string', description: 'TRON address' },
+            },
+            required: ['address'],
+          },
+        },
+        {
+          name: 'get_account_token_overview',
+          description: 'Get token asset overview for an account',
           inputSchema: {
             type: 'object' as const,
             properties: {
@@ -517,8 +579,6 @@ class TronMcpServer {
             return await this.accountModule.getBalance(args as any);
           case 'get_account_resources':
             return await this.accountModule.getAccountResources(args as any);
-          case 'send_trx':
-            return await this.accountModule.sendTrx(args as any);
           case 'get_transaction':
             return await this.blockchainModule.getTransaction(args as any);
           case 'get_transactions_by_address':
@@ -533,8 +593,6 @@ class TronMcpServer {
             return await this.contractCall(args as any);
           case 'estimate_energy':
             return await this.estimateEnergy(args as any);
-          case 'get_java_tron_releases':
-            return await this.getJavaTronReleases(args as any);
           case 'search_tron_docs':
             return await this.searchTronDocs(args as any);
           case 'get_tron_reference':
@@ -555,35 +613,44 @@ class TronMcpServer {
             return await this.getChainParameters();
           case 'get_energy_prices':
             return await this.getEnergyPrices();
-          case 'get_java_tron_readme':
-            return await this.getJavaTronReadme();
-          case 'get_java_tron_file':
-            return await this.getJavaTronFile(args as any);
-          case 'search_java_tron':
-            return await this.searchJavaTron(args as any);
-          case 'get_java_tron_structure':
-            return await this.getJavaTronStructure();
-          case 'get_java_tron_protos':
-            return await this.getJavaTronProtos();
-          case 'get_java_tron_issues':
-            return await this.getJavaTronIssues(args as any);
-          case 'estimate_contract_energy':
-            console.error('[TRON-MCP] estimate_contract_energy called with args:', JSON.stringify(args, null, 2));
-            return await this.estimateContractEnergy(args as any);
-          case 'batch_estimate_energy':
-            return await this.batchEstimateEnergy(args as any);
-          case 'analyze_contract_gas':
-            return await this.analyzeContractGas(args as any);
-          case 'clear_energy_cache':
-            return await this.clearEnergyCache();
           case 'trongrid_api_call':
             return await this.trongridApiCall(args as any);
           case 'tronscan_api_call':
             return await this.tronscanApiCall(args as any);
-          case 'get_trongrid_block':
-            return await this.getTrongridBlock(args as any);
           case 'get_trongrid_account':
             return await this.getTrongridAccount(args as any);
+          case 'estimate_contract_deploy':
+            return await this.estimateContractDeploy(args as any);
+          case 'get_contract_info':
+            return await this.getContractInfo(args as any);
+          case 'get_contract_energy_stats':
+            return await this.getContractEnergyStats(args as any);
+          case 'get_contract_call_stats':
+            return await this.getContractCallStats(args as any);
+          case 'get_contract_callers':
+            return await this.getContractCallers(args as any);
+          case 'get_contract_daily_activity':
+            return await this.getContractDailyActivity(args as any);
+          case 'get_contract_analysis':
+            return await this.getContractAnalysis(args as any);
+          case 'get_contract_events':
+            return await this.getContractEvents(args as any);
+          case 'get_account_overview':
+            return await this.getAccountOverview(args as any);
+          case 'get_account_tokens':
+            return await this.getAccountTokens(args as any);
+          case 'get_account_votes':
+            return await this.getAccountVotes(args as any);
+          case 'get_account_approvals':
+            return await this.getAccountApprovals(args as any);
+          case 'get_account_approval_changes':
+            return await this.getAccountApprovalChanges(args as any);
+          case 'get_account_analysis':
+            return await this.getAccountAnalysis(args as any);
+          case 'get_account_defi':
+            return await this.getAccountDefi(args as any);
+          case 'get_account_token_overview':
+            return await this.getAccountTokenOverview(args as any);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
         }
@@ -693,28 +760,84 @@ class TronMcpServer {
     }
   }
 
-  private async estimateEnergy({ contractAddress, functionName, parameters = [] }: {
-    contractAddress: string; functionName: string; parameters?: any[];
+  private async estimateEnergy({ contractAddress, functionName, parameters = [], callerAddress, callValue = 0, feeLimit = 100000000 }: {
+    contractAddress: string; functionName: string; parameters?: any[]; callerAddress?: string; callValue?: number; feeLimit?: number;
   }): Promise<McpToolResponse> {
     try {
-      return await this.estimateContractEnergy({
-        contractAddress,
-        functionName,
-        parameters,
-        callerAddress: undefined,
-        feeLimit: 100000000,
-      });
+      const result = await this.executeWithFallback({
+        tronweb: async () => {
+          if (!this.energyEstimator) {
+            throw new Error('Energy estimator not initialized');
+          }
+          return await this.energyEstimator.estimateContractEnergy(
+            contractAddress, functionName, parameters, callerAddress || null, feeLimit
+          );
+        },
+        trongrid: async () => {
+          const fromAddress = callerAddress || this.tronWeb.defaultAddress?.base58 || 'TU4vEruvZwLLkSfV9bNw12EJTPvNr7Pvaa';
+
+          let functionSelector = functionName;
+          if (functionName === 'transfer' && parameters.length === 2) {
+            functionSelector = 'transfer(address,uint256)';
+          } else if (functionName === 'balanceOf' && parameters.length === 1) {
+            functionSelector = 'balanceOf(address)';
+          } else if (functionName === 'approve' && parameters.length === 2) {
+            functionSelector = 'approve(address,uint256)';
+          }
+
+          let parameter_hex = '';
+          if (parameters && parameters.length > 0) {
+            try {
+              const types = parameters.map((param: any) => {
+                if (typeof param === 'string' && param.startsWith('T') && param.length === 34) return 'address';
+                if (typeof param === 'number' || (typeof param === 'string' && /^\d+$/.test(param))) return 'uint256';
+                return 'uint256';
+              });
+              const encoded = this.tronWeb.utils.abi.encodeParams(types, parameters);
+              parameter_hex = encoded.replace(/^0x/, '');
+            } catch {
+              // Fall through with empty parameter
+            }
+          }
+
+          const apiResult = await this.trongridApiCall({
+            endpoint: '/wallet/triggerconstantcontract',
+            method: 'POST',
+            data: {
+              owner_address: fromAddress,
+              contract_address: contractAddress,
+              function_selector: functionSelector,
+              parameter: parameter_hex,
+              call_value: callValue,
+              visible: true,
+            },
+          });
+
+          const parsed = JSON.parse(apiResult.content[0]!.text).result;
+          const energyUsed = parsed.energy_used || 0;
+
+          return {
+            contractAddress, functionName, parameters,
+            callerAddress: fromAddress,
+            estimations: {
+              trongrid: {
+                energy: energyUsed, method: 'triggerconstantcontract',
+                accuracy: energyUsed > 0 ? 'high' : 'low',
+                api_response: parsed,
+              },
+            },
+            recommended: energyUsed,
+            timestamp: new Date().toISOString(),
+          };
+        },
+        tronscan: async () => {
+          throw new Error('TronScan does not support energy estimation');
+        },
+      }, 'estimateEnergy');
+
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (error: any) {
       throw new McpError(ErrorCode.InternalError, `Failed to estimate energy: ${error.message}`);
-    }
-  }
-
-  private async getJavaTronReleases({ limit = 10 }: { limit?: number }): Promise<McpToolResponse> {
-    try {
-      const releases = await this.documentation.getJavaTronReleases(limit);
-      return { content: [{ type: 'text', text: JSON.stringify(releases, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get java-tron releases: ${error.message}`);
     }
   }
 
@@ -828,21 +951,13 @@ class TronMcpServer {
           return this.processChainParametersForEnergyPrices(chainParams);
         },
         trongrid: async () => {
-          const response = await fetch('https://api.trongrid.io/wallet/getchainparameters', {
+          const apiResult = await this.trongridApiCall({
+            endpoint: '/wallet/getchainparameters',
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'TRON-PRO-API-KEY': process.env.TRONGRID_API_KEY || '',
-            },
-            body: JSON.stringify({}),
+            data: {},
           });
-
-          if (!response.ok) {
-            throw new Error(`TronGrid API error: ${response.status} ${response.statusText}`);
-          }
-
-          const data: any = await response.json();
-          return this.processChainParametersForEnergyPrices(data.chainParameter || []);
+          const data = JSON.parse(apiResult.content[0]!.text).result;
+          return this.processChainParametersForEnergyPrices(data.chainParameter || data || []);
         },
         tronscan: async () => {
           return await this.tronScanAPI.getEnergyPrices();
@@ -901,320 +1016,6 @@ class TronMcpServer {
     }
 
     return result;
-  }
-
-  private async getJavaTronReadme(): Promise<McpToolResponse> {
-    try {
-      const readme = await this.documentation.getJavaTronReadme();
-      return { content: [{ type: 'text', text: readme.content }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get java-tron README: ${error.message}`);
-    }
-  }
-
-  private async getJavaTronFile({ path }: { path: string }): Promise<McpToolResponse> {
-    try {
-      const file = await this.documentation.getJavaTronFileContent(path);
-      return { content: [{ type: 'text', text: JSON.stringify(file, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get file content: ${error.message}`);
-    }
-  }
-
-  private async searchJavaTron({ query, type = 'code', limit = 20 }: {
-    query: string; type?: string; limit?: number;
-  }): Promise<McpToolResponse> {
-    try {
-      const results = await this.documentation.searchJavaTronRepo(query, { type, limit });
-      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to search java-tron: ${error.message}`);
-    }
-  }
-
-  private async getJavaTronStructure(): Promise<McpToolResponse> {
-    try {
-      const structure = await this.documentation.getJavaTronStructure();
-      return { content: [{ type: 'text', text: JSON.stringify(structure, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get java-tron structure: ${error.message}`);
-    }
-  }
-
-  private async getJavaTronProtos(): Promise<McpToolResponse> {
-    try {
-      const protos = await this.documentation.getProtocolBuffers();
-      return { content: [{ type: 'text', text: JSON.stringify(protos, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get Protocol Buffers: ${error.message}`);
-    }
-  }
-
-  private async getJavaTronIssues({ state = 'open', limit = 20 }: {
-    state?: string; limit?: number;
-  }): Promise<McpToolResponse> {
-    try {
-      const issues = await this.documentation.getJavaTronIssues(state, limit);
-      return { content: [{ type: 'text', text: JSON.stringify(issues, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to get issues: ${error.message}`);
-    }
-  }
-
-  private async estimateContractEnergy({ contractAddress, functionName, parameters = [], callerAddress, feeLimit = 100000000 }: {
-    contractAddress: string; functionName: string; parameters?: any[]; callerAddress?: string; feeLimit?: number;
-  }): Promise<McpToolResponse> {
-    try {
-      const result = await this.executeWithFallback({
-        tronweb: async () => {
-          if (!this.energyEstimator) {
-            throw new Error('Energy estimator not initialized');
-          }
-          return await this.energyEstimator.estimateContractEnergy(
-            contractAddress, functionName, parameters, callerAddress || null, feeLimit
-          );
-        },
-        trongrid: async () => {
-          const fromAddress = callerAddress || 'TU4vEruvZwLLkSfV9bNw12EJTPvNr7Pvaa';
-          console.error(`[TRON-MCP] Using sender address: ${fromAddress}`);
-
-          try {
-            let parameter_hex = '';
-
-            if (contractAddress === 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' && functionName === 'transfer' && parameters.length === 2) {
-              const userAddress = parameters[0];
-              const amount = parameters[1];
-              const isUserAddressProvided = userAddress && typeof userAddress === 'string' && userAddress.startsWith('T') && userAddress.length === 34;
-
-              if (isUserAddressProvided) {
-                try {
-                  const encodedParams = this.tronWeb.utils.abi.encodeParams(['address', 'uint256'], [userAddress, amount]);
-                  parameter_hex = encodedParams.replace(/^0x/, '');
-
-                  const apiResult = await this.trongridApiCall({
-                    endpoint: '/wallet/triggerconstantcontract',
-                    method: 'POST',
-                    data: {
-                      owner_address: fromAddress,
-                      contract_address: contractAddress,
-                      function_selector: 'transfer(address,uint256)',
-                      parameter: parameter_hex,
-                      visible: true,
-                    },
-                  });
-
-                  const parsed = JSON.parse(apiResult.content[0]!.text).result;
-                  const energyUsed = parsed.energy_used || 0;
-
-                  return {
-                    contractAddress, functionName, parameters,
-                    callerAddress: fromAddress,
-                    estimations: {
-                      trongrid: {
-                        energy: energyUsed, method: 'triggerconstantcontract', accuracy: 'high',
-                        recipient_address: userAddress, api_response: parsed,
-                      },
-                    },
-                    recommended: energyUsed,
-                    timestamp: new Date().toISOString(),
-                  };
-                } catch (error: any) {
-                  console.error(`[TRON-MCP] Failed to check user address: ${error.message}`);
-                  return await this.estimateUSDTDualAddress(fromAddress, contractAddress, functionName, parameters, amount);
-                }
-              } else {
-                const amount = parameters[1];
-                return await this.estimateUSDTDualAddress(fromAddress, contractAddress, functionName, parameters, amount);
-              }
-            }
-
-            // Non-USDT contracts
-            const apiResult = await this.trongridApiCall({
-              endpoint: '/wallet/triggerconstantcontract',
-              method: 'POST',
-              data: {
-                owner_address: fromAddress,
-                contract_address: contractAddress,
-                function_selector: functionName,
-                parameter: parameter_hex,
-                visible: true,
-              },
-            });
-
-            const parsed = JSON.parse(apiResult.content[0]!.text).result;
-            const energyUsed = parsed.energy_used || 0;
-            const displayToAddress = parameters.length > 0 ? parameters[0] : null;
-            const finalEnergy = energyUsed > 0 ? energyUsed : this.getFallbackEnergyEstimate(functionName, parameters, contractAddress, displayToAddress);
-
-            return {
-              contractAddress, functionName, parameters,
-              callerAddress: fromAddress,
-              estimations: {
-                trongrid: {
-                  energy: finalEnergy, method: 'triggerconstantcontract',
-                  accuracy: energyUsed > 0 ? 'high' : 'medium',
-                  raw_energy_used: energyUsed, api_response: parsed,
-                  recipient_address: displayToAddress,
-                },
-              },
-              recommended: finalEnergy,
-              timestamp: new Date().toISOString(),
-            };
-          } catch (apiError: any) {
-            console.error('TronGrid API call failed:', apiError.message);
-            const displayToAddress = parameters.length > 0 ? parameters[0] : null;
-            const energy = this.getFallbackEnergyEstimate(functionName, parameters, contractAddress, displayToAddress);
-            return {
-              contractAddress, functionName, parameters,
-              callerAddress: fromAddress,
-              estimations: {
-                fallback: { energy, method: 'predefined', accuracy: 'medium', error: apiError.message },
-              },
-              recommended: energy,
-              timestamp: new Date().toISOString(),
-            };
-          }
-        },
-        tronscan: async () => {
-          const displayToAddress = parameters.length > 0 ? parameters[0] : null;
-          const energy = this.getFallbackEnergyEstimate(functionName, parameters, contractAddress, displayToAddress);
-          return {
-            contractAddress, functionName, parameters,
-            callerAddress: callerAddress || 'TLyqzVGLV1srkB7dToTAEqgDSfPtXRJZYH',
-            estimations: {
-              fallback: { energy, method: 'predefined', accuracy: 'medium' },
-            },
-            recommended: energy,
-            timestamp: new Date().toISOString(),
-          };
-        },
-      }, 'estimateContractEnergy');
-
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to estimate contract energy: ${error.message}`);
-    }
-  }
-
-  private async estimateUSDTDualAddress(
-    fromAddress: string, contractAddress: string, functionName: string, parameters: any[], amount: any
-  ): Promise<any> {
-    const addressWithUSDT = 'TAHT3rrriD23a6AXmaM2YJRRvTYusKGVwD';
-    const addressWithoutUSDT = 'TZ4UXDV5ZhNW7fb2AMSbgfAEZ7hWsnYS2g';
-    const results: any = {};
-
-    try {
-      const encodedParams = this.tronWeb.utils.abi.encodeParams(['address', 'uint256'], [addressWithUSDT, amount]);
-      const resultWithUSDT = await this.trongridApiCall({
-        endpoint: '/wallet/triggerconstantcontract',
-        method: 'POST',
-        data: {
-          owner_address: fromAddress, contract_address: contractAddress,
-          function_selector: 'transfer(address,uint256)',
-          parameter: encodedParams.replace(/^0x/, ''), visible: true,
-        },
-      });
-      const parsed = JSON.parse(resultWithUSDT.content[0]!.text).result;
-      results.withUSDT = { address: addressWithUSDT, energy: parsed.energy_used || 0, api_response: parsed };
-    } catch (err: any) {
-      results.withUSDT = { address: addressWithUSDT, energy: 64285, error: err.message };
-    }
-
-    try {
-      const encodedParams = this.tronWeb.utils.abi.encodeParams(['address', 'uint256'], [addressWithoutUSDT, amount]);
-      const resultWithoutUSDT = await this.trongridApiCall({
-        endpoint: '/wallet/triggerconstantcontract',
-        method: 'POST',
-        data: {
-          owner_address: fromAddress, contract_address: contractAddress,
-          function_selector: 'transfer(address,uint256)',
-          parameter: encodedParams.replace(/^0x/, ''), visible: true,
-        },
-      });
-      const parsed = JSON.parse(resultWithoutUSDT.content[0]!.text).result;
-      results.withoutUSDT = { address: addressWithoutUSDT, energy: parsed.energy_used || 0, api_response: parsed };
-    } catch (err: any) {
-      results.withoutUSDT = { address: addressWithoutUSDT, energy: 130285, error: err.message };
-    }
-
-    return {
-      contractAddress, functionName, parameters,
-      callerAddress: fromAddress,
-      estimations: {
-        trongrid: {
-          energy_with_usdt: results.withUSDT.energy,
-          energy_without_usdt: results.withoutUSDT.energy,
-          address_with_usdt: results.withUSDT.address,
-          address_without_usdt: results.withoutUSDT.address,
-          method: 'triggerconstantcontract_dual',
-          accuracy: 'high',
-          api_responses: {
-            with_usdt: results.withUSDT.api_response,
-            without_usdt: results.withoutUSDT.api_response,
-          },
-        },
-      },
-      recommended: {
-        existing_usdt_address: results.withUSDT.energy,
-        new_usdt_address: results.withoutUSDT.energy,
-      },
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  private getFallbackEnergyEstimate(functionName: string, parameters: any[], contractAddress: string, toAddress: string | null = null): number {
-    const functionLower = functionName.toLowerCase();
-
-    if (contractAddress === 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t') {
-      if (functionLower === 'transfer') {
-        if (toAddress) {
-          if (toAddress === 'TSLbRevWFn3hktZmfDrzRbDLfEA6RQjNwK') return 28000;
-          if (toAddress === 'TAHT3rrriD23a6AXmaM2YJRRvTYusKGVwD') return 13940;
-        }
-        return 13940;
-      }
-      if (functionLower === 'approve') return 13180;
-      if (functionLower === 'transferfrom') return 18190;
-      if (functionLower === 'balanceof') return 680;
-    }
-
-    if (functionLower.includes('transfer') || functionLower.includes('send')) return 14010;
-    if (functionLower.includes('approve') || functionLower.includes('allowance')) return 10000;
-    if (functionLower.includes('swap') || functionLower.includes('exchange')) return 50000;
-    if (functionLower.includes('mint') || functionLower.includes('burn')) return 30000;
-    if (functionLower.includes('view') || functionLower.includes('get') || functionLower.includes('balance')) return 1000;
-
-    return 20000 + (parameters.length * 5000);
-  }
-
-  private async batchEstimateEnergy({ contractCalls }: { contractCalls: any[] }): Promise<McpToolResponse> {
-    try {
-      if (!this.energyEstimator) throw new Error('Energy estimator not initialized');
-      const results = await this.energyEstimator.batchEstimateEnergy(contractCalls);
-      return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to batch estimate energy: ${error.message}`);
-    }
-  }
-
-  private async analyzeContractGas({ contractAddress }: { contractAddress: string }): Promise<McpToolResponse> {
-    try {
-      if (!this.energyEstimator) throw new Error('Energy estimator not initialized');
-      const analysis = await this.energyEstimator.analyzeContractGasCosts(contractAddress);
-      return { content: [{ type: 'text', text: JSON.stringify(analysis, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to analyze contract gas: ${error.message}`);
-    }
-  }
-
-  private async clearEnergyCache(): Promise<McpToolResponse> {
-    try {
-      if (!this.energyEstimator) throw new Error('Energy estimator not initialized');
-      const result = await this.energyEstimator.clearCache();
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `Failed to clear energy cache: ${error.message}`);
-    }
   }
 
   private async checkNodeAvailability(): Promise<boolean> {
@@ -1413,39 +1214,6 @@ class TronMcpServer {
     }
   }
 
-  private async getTrongridBlock({ blockNumber, onlyNumber = false }: {
-    blockNumber?: number; onlyNumber?: boolean;
-  }): Promise<McpToolResponse> {
-    try {
-      const endpoint = blockNumber ? '/wallet/getblockbynum' : '/wallet/getnowblock';
-      const data = blockNumber ? { num: blockNumber } : {};
-
-      const result = await this.trongridApiCall({ endpoint, method: 'POST', data });
-
-      if (onlyNumber) {
-        const blockData = JSON.parse(result.content[0]!.text).result;
-        const number = blockData.block_header?.raw_data?.number;
-
-        if (!number) throw new Error('Unable to extract block number from response');
-
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              current_block_number: number,
-              timestamp: new Date().toISOString(),
-              source: 'trongrid_api',
-            }, null, 2),
-          }],
-        };
-      }
-
-      return result;
-    } catch (error: any) {
-      throw new McpError(ErrorCode.InternalError, `TronGrid block request failed: ${error.message}`);
-    }
-  }
-
   private async getTrongridAccount({ address }: { address: string }): Promise<McpToolResponse> {
     try {
       return await this.trongridApiCall({
@@ -1463,6 +1231,252 @@ class TronMcpServer {
       } catch {
         throw new McpError(ErrorCode.InternalError, `TronGrid account request failed: ${error.message}`);
       }
+    }
+  }
+
+  private async estimateContractDeploy({ bytecodeHex, ownerAddress, callValue = 0 }: {
+    bytecodeHex: string; ownerAddress?: string; callValue?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const fromAddress = ownerAddress || this.tronWeb.defaultAddress?.base58 || 'TU4vEruvZwLLkSfV9bNw12EJTPvNr7Pvaa';
+
+      const apiResult = await this.trongridApiCall({
+        endpoint: '/wallet/triggerconstantcontract',
+        method: 'POST',
+        data: {
+          owner_address: fromAddress,
+          contract_address: '',
+          data: bytecodeHex,
+          call_value: callValue,
+          visible: true,
+        },
+      });
+
+      const parsed = JSON.parse(apiResult.content[0]!.text).result;
+      const energyUsed = parsed.energy_used || 0;
+      const bytecodeSize = bytecodeHex.length / 2;
+      const bandwidthCost = bytecodeSize + 200;
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            ownerAddress: fromAddress,
+            estimatedEnergy: energyUsed,
+            estimatedBandwidth: bandwidthCost,
+            bytecodeSize,
+            callValue,
+            note: 'Deploying to a new address incurs a 1 TRX account activation fee. Bandwidth cost is approximate.',
+            timestamp: new Date().toISOString(),
+          }, null, 2),
+        }],
+      };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to estimate contract deploy: ${error.message}`);
+    }
+  }
+
+  private async getContractInfo({ contractAddress }: { contractAddress: string }): Promise<McpToolResponse> {
+    try {
+      let trongridData: any = null;
+      let tronscanData: any = null;
+
+      // TronGrid: getcontractinfo
+      try {
+        const apiResult = await this.trongridApiCall({
+          endpoint: '/wallet/getcontractinfo',
+          method: 'POST',
+          data: { value: contractAddress, visible: true },
+        });
+        trongridData = JSON.parse(apiResult.content[0]!.text).result;
+      } catch (err: any) {
+        console.error('TronGrid getcontractinfo failed:', err.message);
+      }
+
+      // TronScan: contract enrichment
+      try {
+        tronscanData = await this.tronScanAPI.getContractInfo(contractAddress);
+      } catch (err: any) {
+        console.error('TronScan contract info failed:', err.message);
+      }
+
+      const merged: any = {
+        contractAddress,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (trongridData) {
+        merged.abi = trongridData.abi;
+        merged.bytecode = trongridData.bytecode;
+        merged.origin_address = trongridData.origin_address;
+        merged.consume_user_resource_percent = trongridData.consume_user_resource_percent;
+        merged.origin_energy_limit = trongridData.origin_energy_limit;
+        merged.contract_state = trongridData.contract_state;
+      }
+
+      if (tronscanData) {
+        merged.name = tronscanData.name;
+        merged.verified = tronscanData.verify_status;
+        merged.is_proxy = tronscanData.is_proxy;
+        merged.token = tronscanData.token;
+        merged.tag = tronscanData.tag1;
+        merged.balance_in_usd = tronscanData.balance_in_usd;
+      }
+
+      if (!trongridData && !tronscanData) {
+        throw new Error('Both TronGrid and TronScan failed to return contract info');
+      }
+
+      return { content: [{ type: 'text', text: JSON.stringify(merged, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract info: ${error.message}`);
+    }
+  }
+
+  private async getContractEnergyStats({ address }: { address: string }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getContractEnergyStats(address);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract energy stats: ${error.message}`);
+    }
+  }
+
+  private async getContractCallStats({ contract_address }: { contract_address: string }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getContractCallStats(contract_address);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract call stats: ${error.message}`);
+    }
+  }
+
+  private async getContractCallers({ address, day, start, limit }: {
+    address: string; day?: number; start?: number; limit?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getContractCallers(address, { day, start, limit });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract callers: ${error.message}`);
+    }
+  }
+
+  private async getContractDailyActivity({ address, start_timestamp, end_timestamp }: {
+    address: string; start_timestamp?: number; end_timestamp?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getContractDailyActivity(address, { start_timestamp, end_timestamp });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract daily activity: ${error.message}`);
+    }
+  }
+
+  private async getContractAnalysis({ address, type, start_timestamp, end_timestamp }: {
+    address: string; type?: string; start_timestamp?: number; end_timestamp?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getContractAnalysis(address, { type, start_timestamp, end_timestamp });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract analysis: ${error.message}`);
+    }
+  }
+
+  private async getContractEvents({ contractAddress, limit = 20 }: {
+    contractAddress: string; limit?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.postRequest('/contracts/smart-contract-triggers-batch', {
+        contractAddress,
+        limit,
+      });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get contract events: ${error.message}`);
+    }
+  }
+
+  private async getAccountOverview({ address }: { address: string }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountOverview(address);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account overview: ${error.message}`);
+    }
+  }
+
+  private async getAccountTokens({ address, start, limit, type }: {
+    address: string; start?: number; limit?: number; type?: string;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountTokens(address, { start, limit, type });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account tokens: ${error.message}`);
+    }
+  }
+
+  private async getAccountVotes({ voter, candidate, start, limit }: {
+    voter?: string; candidate?: string; start?: number; limit?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountVotes({ voter, candidate, start, limit });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account votes: ${error.message}`);
+    }
+  }
+
+  private async getAccountApprovals({ address, type, start, limit }: {
+    address: string; type?: string; start?: number; limit?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountApprovals(address, { type, start, limit });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account approvals: ${error.message}`);
+    }
+  }
+
+  private async getAccountApprovalChanges({ contract_address, from_address, to_address, start, limit }: {
+    contract_address: string; from_address?: string; to_address?: string; start?: number; limit?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountApprovalChanges(contract_address, { from_address, to_address, start, limit });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get approval changes: ${error.message}`);
+    }
+  }
+
+  private async getAccountAnalysis({ address, type, start_timestamp, end_timestamp }: {
+    address: string; type?: string; start_timestamp?: number; end_timestamp?: number;
+  }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountAnalysis(address, { type, start_timestamp, end_timestamp });
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account analysis: ${error.message}`);
+    }
+  }
+
+  private async getAccountDefi({ address }: { address: string }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountDefi(address);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account DeFi data: ${error.message}`);
+    }
+  }
+
+  private async getAccountTokenOverview({ address }: { address: string }): Promise<McpToolResponse> {
+    try {
+      const data = await this.tronScanAPI.getAccountTokenOverview(address);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      throw new McpError(ErrorCode.InternalError, `Failed to get account token overview: ${error.message}`);
     }
   }
 

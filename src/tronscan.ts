@@ -79,6 +79,42 @@ export class TronScanAPI {
     }
   }
 
+  async postRequest(endpoint: string, data: Record<string, any> = {}): Promise<any> {
+    try {
+      if (this.rateLimiter) {
+        await this.rateLimiter.throttle();
+      }
+
+      const apiKey = this.getApiKey();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(apiKey ? { 'TRON-PRO-API-KEY': apiKey } : {}),
+      };
+
+      const response = await axios.post(`${this.baseURL}${endpoint}`, data, {
+        headers,
+        timeout: 10000,
+        validateStatus: (status: number) => status < 500,
+      });
+
+      if (response.status === 429 && this.rateLimiter) {
+        this.rateLimiter.handle429(
+          { headers: { get: (name: string) => response.headers[name.toLowerCase()] } },
+          response.data
+        );
+      }
+
+      if (response.status >= 400) {
+        throw new Error(`TronScan API error: ${response.status} ${response.statusText}`);
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error(`TronScan API POST error for ${endpoint}:`, error.message);
+      throw error;
+    }
+  }
+
   async getEnergyConsumptionData(limit: number = 10, day: string | null = null): Promise<any> {
     const params: Record<string, any> = { limit };
     if (day) params.day = day;
@@ -270,6 +306,62 @@ export class TronScanAPI {
         throw error;
       }
     }
+  }
+
+  async getContractEnergyStats(address: string): Promise<any> {
+    return await this.makeRequest('/onecontractenergystatistic', { address });
+  }
+
+  async getContractCallStats(contractAddress: string): Promise<any> {
+    return await this.makeRequest('/contracts/top_call', { contract_address: contractAddress });
+  }
+
+  async getContractCallers(address: string, params: { day?: number; start?: number; limit?: number } = {}): Promise<any> {
+    return await this.makeRequest('/onecontractcallers', { address, ...params });
+  }
+
+  async getContractDailyActivity(address: string, params: { start_timestamp?: number; end_timestamp?: number } = {}): Promise<any> {
+    return await this.makeRequest('/onecontracttriggerstatistic', { address, ...params });
+  }
+
+  async getContractAnalysis(address: string, params: { type?: string; start_timestamp?: number; end_timestamp?: number } = {}): Promise<any> {
+    return await this.makeRequest('/contract/analysis', { address, ...params });
+  }
+
+  async getContractInfo(contractAddress: string): Promise<any> {
+    return await this.makeRequest('/contract', { contract: contractAddress });
+  }
+
+  async getAccountOverview(address: string): Promise<any> {
+    return await this.makeRequest('/accountv2', { address });
+  }
+
+  async getAccountTokens(address: string, params: { start?: number; limit?: number; type?: string } = {}): Promise<any> {
+    return await this.makeRequest('/account/tokens', { address, ...params });
+  }
+
+  async getAccountVotes(params: { voter?: string; candidate?: string; start?: number; limit?: number }): Promise<any> {
+    return await this.makeRequest('/vote', params);
+  }
+
+  async getAccountApprovals(address: string, params: { type?: string; start?: number; limit?: number } = {}): Promise<any> {
+    return await this.makeRequest('/account/approve/list', { address, ...params });
+  }
+
+  async getAccountApprovalChanges(contractAddress: string, params: { from_address?: string; to_address?: string; start?: number; limit?: number } = {}): Promise<any> {
+    return await this.makeRequest('/account/approve/change', { contract_address: contractAddress, ...params });
+  }
+
+  async getAccountAnalysis(address: string, params: { type?: string; start_timestamp?: number; end_timestamp?: number } = {}): Promise<any> {
+    return await this.makeRequest('/account/analysis', { address, ...params });
+  }
+
+  async getAccountDefi(address: string): Promise<any> {
+    return await this.makeRequest('/participate_project', { address });
+  }
+
+  async getAccountTokenOverview(address: string): Promise<any> {
+    return await this.makeRequest('/account/token_asset_overview', { address });
   }
 
   async clearCache(): Promise<void> {
