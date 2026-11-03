@@ -1,3 +1,8 @@
+<!-- D9 text: pending operator ratification -->
+> **This server is retired.** Its maintained successor is **BLU**: the full history of TRON over MCP, with evidence on every
+> answer. In Claude Code: `/plugin marketplace add transatron/awesome-tron-agents` then `/plugin install blu@transatron-tron-agents`,
+> and sign in when `/mcp` asks. No key needed.
+
 # TRON MCP Server
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server for interacting with the TRON blockchain. Exposes ~38 read-only tools over stdio transport covering balance queries, TRX transfers, smart contract interaction, energy estimation, contract analytics, account analytics, market data, and more.
